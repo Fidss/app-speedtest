@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern Speed Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .glass {
+            background: rgba(31, 41, 55, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-gray-950 text-white min-h-screen flex items-center justify-center p-4 selection:bg-cyan-500 selection:text-white">
+    
+    <div class="glass w-full max-w-2xl rounded-3xl p-8 shadow-2xl relative overflow-hidden">
+        <div class="absolute -top-20 -right-20 w-40 h-40 bg-cyan-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
+        <div class="absolute -bottom-20 -left-20 w-40 h-40 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
+
+        <div class="relative z-10 text-center">
+            <h1 class="text-4xl font-extrabold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-500">
+                Internet Speed Test
+            </h1>
+            <p class="text-gray-400 mb-8">Ukur kecepatan koneksi Anda secara real-time</p>
+
+            <div class="grid grid-cols-3 gap-4 mb-10">
+                <div class="bg-gray-800/50 rounded-2xl p-4 border border-gray-700">
+                    <p class="text-gray-400 text-sm font-semibold mb-1 uppercase tracking-wider">Ping</p>
+                    <div class="flex items-baseline justify-center gap-1">
+                        <span id="pingVal" class="text-3xl font-bold text-yellow-400">--</span>
+                        <span class="text-sm text-gray-500">ms</span>
+                    </div>
+                </div>
+                <div class="bg-gray-800/50 rounded-2xl p-4 border border-gray-700">
+                    <p class="text-gray-400 text-sm font-semibold mb-1 uppercase tracking-wider">Download</p>
+                    <div class="flex items-baseline justify-center gap-1">
+                        <span id="dlVal" class="text-3xl font-bold text-cyan-400">--</span>
+                        <span class="text-sm text-gray-500">Mbps</span>
+                    </div>
+                </div>
+                <div class="bg-gray-800/50 rounded-2xl p-4 border border-gray-700">
+                    <p class="text-gray-400 text-sm font-semibold mb-1 uppercase tracking-wider">Upload</p>
+                    <div class="flex items-baseline justify-center gap-1">
+                        <span id="ulVal" class="text-3xl font-bold text-purple-400">--</span>
+                        <span class="text-sm text-gray-500">Mbps</span>
+                    </div>
+                </div>
+            </div>
+
+            <button id="startBtn" class="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold py-4 px-12 rounded-full transition-all duration-300 transform hover:scale-105 shadow-[0_0_20px_rgba(6,182,212,0.4)]">
+                Mulai Test
+            </button>
+            <p id="statusText" class="mt-4 text-sm text-gray-400 h-5"></p>
+        </div>
+    </div>
+
+    <script>
+        const btn = document.getElementById('startBtn');
+        const statusText = document.getElementById('statusText');
+        
+        async function runTest() {
+            btn.disabled = true;
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+            
+            // Reset UI
+            document.getElementById('pingVal').innerText = '--';
+            document.getElementById('dlVal').innerText = '--';
+            document.getElementById('ulVal').innerText = '--';
+
+            try {
+                // 1. PING TEST
+                statusText.innerText = 'Mengukur Ping...';
+                let start = performance.now();
+                await fetch('/api/ping', { cache: 'no-store' });
+                let pingTime = performance.now() - start;
+                document.getElementById('pingVal').innerText = Math.round(pingTime);
+
+                // 2. DOWNLOAD TEST
+                statusText.innerText = 'Mengukur Download...';
+                start = performance.now();
+                const dlResponse = await fetch('/api/download', { cache: 'no-store' });
+                const dlBlob = await dlResponse.blob();
+                let dlTime = (performance.now() - start) / 1000; // dalam detik
+                let dlBits = dlBlob.size * 8; // konversi byte ke bit
+                let dlSpeedMbps = (dlBits / dlTime) / (1024 * 1024);
+                document.getElementById('dlVal').innerText = dlSpeedMbps.toFixed(2);
+
+                // 3. UPLOAD TEST
+                statusText.innerText = 'Mengukur Upload...';
+                // Membuat payload dummy 1MB
+                const uploadData = new Blob([new Uint8Array(1024 * 1024)]); 
+                start = performance.now();
+                await fetch('/api/upload', {
+                    method: 'POST',
+                    body: uploadData,
+                    headers: { 'Content-Type': 'application/octet-stream' }
+                });
+                let ulTime = (performance.now() - start) / 1000; // dalam detik
+                let ulBits = uploadData.size * 8;
+                let ulSpeedMbps = (ulBits / ulTime) / (1024 * 1024);
+                document.getElementById('ulVal').innerText = ulSpeedMbps.toFixed(2);
+
+                statusText.innerText = 'Test Selesai!';
+            } catch (err) {
+                console.error(err);
+                statusText.innerText = 'Terjadi kesalahan jaringan.';
+            } finally {
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                setTimeout(() => statusText.innerText = '', 3000);
+            }
+        }
+
+        btn.addEventListener('click', runTest);
+    </script>
+</body>
+</html>
